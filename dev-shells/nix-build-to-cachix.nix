@@ -1,8 +1,16 @@
-{ writeShellApplication, jq, cachix, ... }:
+{
+  writeShellApplication,
+  jq,
+  cachix,
+  ...
+}:
 
 writeShellApplication {
   name = "nix-build-to-cachix";
-  runtimeInputs = [ jq cachix ];
+  runtimeInputs = [
+    jq
+    cachix
+  ];
   text = ''
     set -euo pipefail
 
@@ -29,7 +37,7 @@ writeShellApplication {
     set -o xtrace
 
     if [ -n "''${TARGET}" ]; then
-      echo "bulding and pushing only the specified target"
+      echo "building and pushing only the specified target"
       build_and_push "''${TARGET}"
       exit
     fi
@@ -49,16 +57,13 @@ writeShellApplication {
     )
 
     declare -a packages=(
-      "ffmpeg_7"
-      "ffmpeg_7-headless"
+      "ffmpeg_8"
+      "ffmpeg_8-headless"
 
-      # "kodi"
       "kodi-gbm"
-      # "kodi-wayland"
 
       "libcamera"
       "libpisp"
-      # "libraspberrypi"
 
       "raspberrypi-utils"
       "raspberrypi-udev-rules"

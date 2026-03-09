@@ -49,6 +49,38 @@ let
     };
   };
 
+  # Common kernel config fixups: enforce RPi defconfig options that NixOS
+  # overrides. These restore the upstream RPi defaults for networking,
+  # preemption, and memory management.
+  commonFixupStructuredConfig = with pkgs.lib.kernel; {
+    NET_CLS_BPF = mkKernelOverride yes; # =module in nixos
+    NR_CPUS = mkKernelOverride (freeform "4"); # RPi has 4 cores; =384 in nixos
+    PREEMPT = mkKernelOverride yes;
+    # override what nixos sets in `linux/kernel/preempt.common-config.nix`
+    PREEMPT_VOLUNTARY = mkKernelOverride no;
+    CMA_SIZE_MBYTES = mkKernelOverride (freeform "5"); # RPi limited RAM; =32 in nixos
+    FB_SIMPLE = yes;
+    IP_PNP = mkKernelOverride yes;
+    IP_PNP_DHCP = yes;
+    IP_PNP_RARP = yes;
+    LOGO = mkKernelOverride yes;
+    NFS_FS = mkKernelOverride yes; # =module in nixos
+    NFS_V4 = yes; # =module in nixos
+    NLS_CODEPAGE_437 = mkKernelOverride yes; # =module in nixos
+    ROOT_NFS = yes;
+  };
+
+  # Per-SoC fixup config applied to both bcm2711 (RPi4) and bcm2712 (RPi5)
+  mkFixupStructuredConfig =
+    extra:
+    let
+      config = commonFixupStructuredConfig // extra;
+    in
+    {
+      bcm2711.aarch64 = config;
+      bcm2712.aarch64 = config;
+    };
+
   # Linux
 
   linux_v6_12_47_argsOverride = {
@@ -68,7 +100,7 @@ let
   linux_v6_12_34_argsOverride = {
     # https://github.com/raspberrypi/linux/releases/tag/stable_20250702
     modDirVersion = "6.12.34";
-    tag = "stable_20250702";  # 8f77e03530f65209a377d25023e912b288e039cd
+    tag = "stable_20250702"; # 8f77e03530f65209a377d25023e912b288e039cd
     srcHash = "sha256-lK0esjFhLvtBbyddMfa1H7ZcBbcOm2ygor338ZT5VpI=";
   };
 
@@ -79,48 +111,12 @@ let
     tag = "stable_20250428";
     srcHash = "sha256-jVvJJJP4wSJm91jOz8QMXIujjGZ+IisTMCvusxarons";
 
-    # this is to enforce some of the "_defconfig" kernel options after nixos
-    # overrides some of them
-    # https://raw.githubusercontent.com/raspberrypi/linux/refs/tags/stable_20250428/arch/arm64/configs/bcm2712_defconfig
-    fixupStructuredConfig = let
-      common = with pkgs.lib.kernel; {
-        # CRYPTO_AES = module ; # =yes in nixos;
-        # CRYPTO_SHA512 = module ; # =yes in nixos;
-        NET_CLS_BPF = mkKernelOverride yes ; # =module in nixos;
-        NR_CPUS = mkKernelOverride (freeform "4"); # =384 in nixos;
-
-        PREEMPT = mkKernelOverride yes;
-        # override what nixos sets in `linux/kernel/preempt.common-config.nix`
-        PREEMPT_VOLUNTARY = mkKernelOverride no;
-
-        # BINFMT_MISC = module ; # =yes in nixos;
-        CMA_SIZE_MBYTES = mkKernelOverride (freeform "5") ; # =32 in nixos;
+    fixupStructuredConfig = mkFixupStructuredConfig (
+      with pkgs.lib.kernel;
+      {
         CPU_FREQ_DEFAULT_GOV_ONDEMAND = yes;
-        # DRM = module ; # =yes in nixos;
-        # F2FS_FS = yes ; # =module in nixos;
-        FB_SIMPLE = yes;
-        # IKCONFIG = module ; # =yes in nixos;
-        # IPV6 = module ; # =yes in nixos;
-        IP_PNP = mkKernelOverride yes;
-        IP_PNP_DHCP = yes;
-        IP_PNP_RARP = yes;
-        LOGO = mkKernelOverride yes;
-        NFS_FS = mkKernelOverride yes ; # =module in nixos;
-        NFS_V4 = yes ; # =module in nixos;
-        NLS_CODEPAGE_437 = mkKernelOverride yes ; # =module in nixos;
-        ROOT_NFS = yes;
-        # UEVENT_HELPER = yes;
-        # UNICODE = module; # =y in nixos
-        # USB_SERIAL = module ; # =yes in nixos;
-      };
-    in {
-      bcm2711.aarch64 = common // {
-        # LOCALVERSION = "-v8" ; # ="" in nixos;
-      };
-      bcm2712.aarch64 = common // {
-        # LOCALVERSION = "-v8-16k" ; # ="" in nixos;
-      };
-    };
+      }
+    );
   };
   linux_v6_6_74_argsOverride = {
     # https://github.com/raspberrypi/linux/releases/tag/stable_20250127
@@ -153,48 +149,7 @@ let
       ir-rx51_-_pwm_apply_might_sleep
     ];
 
-    # this is to enforce some of the "_defconfig" kernel options after nixos
-    # overrides some of them
-    # https://raw.githubusercontent.com/raspberrypi/linux/refs/tags/stable_20240529/arch/arm64/configs/bcm2712_defconfig
-    fixupStructuredConfig = let
-      common = with pkgs.lib.kernel; {
-        # CRYPTO_AES = module ; # =yes in nixos;
-        # CRYPTO_SHA512 = module ; # =yes in nixos;
-        NET_CLS_BPF = mkKernelOverride yes ; # =module in nixos;
-
-        PREEMPT = mkKernelOverride yes;
-        # override what nixos sets in `linux/kernel/preempt.common-config.nix`
-        PREEMPT_VOLUNTARY = mkKernelOverride no;
-
-        # BINFMT_MISC = module ; # =yes in nixos;
-        CMA_SIZE_MBYTES = mkKernelOverride (freeform "5") ; # =32 in nixos;
-        # CPU_FREQ_DEFAULT_GOV_POWERSAVE = yes;
-        # DRM = module ; # =yes in nixos;
-        # F2FS_FS = yes ; # =module in nixos;
-        FB_SIMPLE = yes;
-        # IKCONFIG = module ; # =yes in nixos;
-        # IPV6 = module ; # =yes in nixos;
-        IP_PNP = mkKernelOverride yes;
-        IP_PNP_DHCP = yes;
-        IP_PNP_RARP = yes;
-        LOGO = mkKernelOverride yes;
-        NFS_FS = mkKernelOverride yes ; # =module in nixos;
-        NFS_V4 = yes ; # =module in nixos;
-        NLS_CODEPAGE_437 = mkKernelOverride yes ; # =module in nixos;
-        # NTFS_FS = mkKernelOverride module;
-        # NTFS_RW = yes;
-        ROOT_NFS = yes;
-        # UEVENT_HELPER = yes;
-        # USB_SERIAL = module ; # =yes in nixos;
-      };
-    in {
-      bcm2711.aarch64 = common // {
-        # LOCALVERSION = "-v8" ; # ="" in nixos;
-      };
-      bcm2712.aarch64 = common // {
-        # LOCALVERSION = "-v8-16k" ; # ="" in nixos;
-      };
-    };
+    fixupStructuredConfig = mkFixupStructuredConfig { };
   };
   linux_v6_6_28_argsOverride = {
     # https://github.com/raspberrypi/linux/releases/tag/stable_20240423
@@ -225,7 +180,8 @@ let
       iommu-bcm2712-don-t-allow-building-as-module
     ];
   };
-in {
+in
+{
   "6_12_47" = linux_v6_12_47_argsOverride;
   "6_12_44" = linux_v6_12_44_argsOverride;
   "6_12_34" = linux_v6_12_34_argsOverride;
